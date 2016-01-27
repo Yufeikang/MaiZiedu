@@ -3,29 +3,22 @@
     Created by kang on 11/1/2015.
 """
 import os
-import time
 import urllib
 from DownCourse import DownCourse
 import multiprocessing
 
 
 def schedule(block, block_size, file_size):
-    # name = threading.currentThread().name
-    # print name + ":" + str(file_size) + " block:" + str(block)
     pass
 
 
-def print_data(data=[], threads=[]):
-    pass
-
-
-def worker(down_url=("", "")):
-    print down_url[0]
-    print down_url[1]
-    if os.path.exists(down_url[0]):
-            return
-    urllib.urlretrieve(down_url[1], down_url[0] + ".tmp")
-    os.rename(down_url[0] + ".tmp", down_url[0])
+def worker(download_url=("", "")):
+    print download_url[0]
+    print download_url[1]
+    if os.path.exists(download_url[0]):
+        return
+    urllib.urlretrieve(download_url[1], download_url[0] + ".tmp")
+    os.rename(download_url[0] + ".tmp", download_url[0])
 
 
 if __name__ == '__main__':
