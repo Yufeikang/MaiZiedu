@@ -2,38 +2,13 @@
 """
     Created by kang on 11/1/2015.
 """
-import os
-import urllib
+
 from DownCourse import DownCourse
 import multiprocessing
 
-
-def schedule(block, block_size, file_size):
-    pass
-
-
-def worker(download_url=("", "")):
-    print download_url[0]
-    print download_url[1]
-    if os.path.exists(download_url[0]):
-        return
-    urllib.urlretrieve(download_url[1], download_url[0] + ".tmp")
-    os.rename(download_url[0] + ".tmp", download_url[0])
-
-
 if __name__ == '__main__':
     multiprocessing.freeze_support()
-    down_class = DownCourse("D:\\Media\\ClassVedio\\".decode('utf-8'),
-                            'http://www.maiziedu.com/course/python/572-8104/')
-    down_class.get_content()
-    down_class.get_course_name()
-    down_class.get_class_list()
-    class_list = down_class.mClassList
-    down_url = down_class.get_download_list(class_list)
-    pool = multiprocessing.Pool(processes=8)
-    result = []
-    for _list in down_url:
-        result.append(pool.apply_async(worker, (_list,)))
-    pool.close()
-    pool.join()
+    down_class = DownCourse("D:\\Media\\ClassVedio\\python\\".decode('utf-8'),
+                            'http://www.maiziedu.com/course/python/425-5465/')
+    down_class.start_download_all()
     print "完成"

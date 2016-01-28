@@ -8,6 +8,7 @@ import re
 import HTMLParser
 import os
 import sys
+import multiprocessing
 
 ROOT_URL = "http://www.maiziedu.com"
 
@@ -30,9 +31,11 @@ class DownCourse:
         self.mClassList = []
         self.mContent = ""
         self.mCourseName = ""
+        self.mDownload_list = []  # 包含保存路径和下载URl的元组
+        self.mResult = []
         print "DownCourse Created\n"
 
-    def get_content(self):
+    def obtain_content(self):
         try:
             req = urllib2.Request(self.mCourseUrl)
             self.mContent = urllib2.urlopen(req).read()
@@ -40,7 +43,7 @@ class DownCourse:
             print e
         return
 
-    def get_course_name(self):
+    def obtain_course_name(self):
         try:
             pattern_ol = "<ol class=\"breadcrumb\">[\s\S]+?</ol>"
             pattern_li = "<li class=\"active\">[\S\s]+?</li>"
@@ -52,10 +55,10 @@ class DownCourse:
             for c in filter_char:
                 self.mCourseName = self.mCourseName.replace(c, '_')
         except Exception, e:
-            print "get_course_name ERROR:" + str(e)
+            print "obtain_course_name ERROR:" + str(e)
         return
 
-    def get_class_list(self):
+    def obtain_class_list(self):
         pattern_div = "<div id=\"playlist\"[\S\s]+?</div>"
         pattern_li = "<li[\s\S]+?</li>"
         pattern_url = "\"\S+?\""
@@ -140,10 +143,30 @@ class DownCourse:
         return result
 
     def fast_start(self, call_back=None):
-        self.get_content()
-        self.get_course_name()
-        self.get_class_list()
+        self.obtain_content()
+        self.obtain_course_name()
+        self.obtain_class_list()
         self.down_class(call_back)
+
+    def start_download_all(self):
+        self.obtain_content()
+        self.obtain_course_name()
+        self.obtain_class_list()
+        self.mDownload_list = self.get_download_list(self.mClassList)
+        pool = multiprocessing.Pool(processes=8)
+        for _list in self.mDownload_list:
+            self.mResult.append(pool.apply_async(worker, (_list,)))
+        pool.close()
+        pool.join()
+
+
+def worker(download_url=("", "")):
+    print download_url[0]
+    print download_url[1]
+    if os.path.exists(download_url[0]):
+        return
+    urllib.urlretrieve(download_url[1], download_url[0] + ".tmp")
+    os.rename(download_url[0] + ".tmp", download_url[0])
 
 
 def schedule(block, block_size, file_size):
