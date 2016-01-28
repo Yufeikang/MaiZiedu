@@ -9,6 +9,7 @@ import HTMLParser
 import os
 import sys
 import multiprocessing
+import logging
 
 ROOT_URL = "http://www.maiziedu.com"
 
@@ -33,7 +34,13 @@ class DownCourse:
         self.mCourseName = ""
         self.mDownload_list = []  # 包含保存路径和下载URl的元组
         self.mResult = []
-        print "DownCourse Created\n"
+        self.mProgressNum = 0
+        self.mLogger = logging.getLogger(self.mRootDir)
+        self.mLogger.setLevel(logging.INFO)
+        self.mFileHandle = logging.FileHandler(self.mRootDir + 'log.txt')
+        self.mConsoleHandle = logging.StreamHandler()
+        self.mLogger.addHandler(self.mFileHandle)
+        self.mLogger.addHandler(self.mConsoleHandle)
 
     def obtain_content(self):
         try:
@@ -148,12 +155,18 @@ class DownCourse:
         self.obtain_class_list()
         self.down_class(call_back)
 
+    def set_progress_num(self, num=0):
+        self.mProgressNum = num
+
     def start_download_all(self):
         self.obtain_content()
         self.obtain_course_name()
         self.obtain_class_list()
         self.mDownload_list = self.get_download_list(self.mClassList)
-        pool = multiprocessing.Pool(processes=8)
+        if self.mProgressNum == 0:
+            self.mProgressNum = multiprocessing.cpu_count() * 2
+            self.mLogger.info("cpu count is %d",self.mProgressNum)
+        pool = multiprocessing.Pool(self.mProgressNum)
         for _list in self.mDownload_list:
             self.mResult.append(pool.apply_async(worker, (_list,)))
         pool.close()
@@ -161,8 +174,8 @@ class DownCourse:
 
 
 def worker(download_url=("", "")):
-    print download_url[0]
-    print download_url[1]
+    # print download_url[0]
+    # print download_url[1]
     if os.path.exists(download_url[0]):
         return
     urllib.urlretrieve(download_url[1], download_url[0] + ".tmp")
