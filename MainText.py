@@ -53,12 +53,14 @@ def main(root_dir=''):
             section_dir = check_file_dir(section_dir)
             downloader = DownloadSection(section_dir, _section[0])
             downloader.start_download_all()
+            downloader.recv_queue()
     for section_num in section_num_list:
         _section_num = int(section_num)-1
         section_dir = course_dir + section_list[_section_num][1] + DIR_SPLIT_C
         section_dir = check_file_dir(section_dir)
         downloader = DownloadSection(section_dir, section_list[_section_num][0])
         downloader.start_download_all()
+        downloader.recv_queue()
 
 
 if __name__ == "__main__":

@@ -14,14 +14,12 @@ import urllib2
 import re
 import HTMLParser
 import os
-import sys
 import multiprocessing
 import logging
 import platform
 
 ROOT_URL = "http://www.maiziedu.com"
 DIR_SPLIT_C = ''
-
 platform_sys = platform.system()
 if platform_sys.lower() == 'win32':
     DIR_SPLIT_C = '\\'
@@ -50,19 +48,28 @@ class DownloadSection:
         self.mDownload_list = []  # 包含保存路径和下载URl的元组
         self.mResult = []
         self.mProgressNum = 0
+        self.pool = None
+        self.queue = None
         self.mLogger = logging.getLogger(self.mRootDir)
-        self.mLogger.setLevel(logging.INFO)
+        self.mLogger.setLevel(logging.DEBUG)
         self.mFileHandle = logging.FileHandler(self.mRootDir + 'log.txt')
+        formatter = logging.Formatter("%(asctime)s:[line:%(lineno)d] %(levelname)s %(message)s")
+        self.mFileHandle.setFormatter(formatter)
         self.mConsoleHandle = logging.StreamHandler()
+        self.mConsoleHandle.setFormatter(formatter)
         self.mLogger.addHandler(self.mFileHandle)
         self.mLogger.addHandler(self.mConsoleHandle)
+        self.mManager = multiprocessing.Manager()
+        self.mQueue = self.mManager.Queue()
 
     def obtain_content(self):
+        self.mLogger.debug("obtain_content enter")
         try:
             req = urllib2.Request(self.mCourseUrl)
             self.mContent = urllib2.urlopen(req).read()
         except Exception, e:
             print e
+        self.mLogger.debug("obtain_content end")
         return
 
     def obtain_course_name(self):
@@ -81,6 +88,7 @@ class DownloadSection:
         return
 
     def obtain_class_list(self):
+        self.mLogger.debug("obtain_class_list enter")
         pattern_div = "<div id=\"playlist\"[\S\s]+?</div>"
         pattern_li = "<li[\s\S]+?</li>"
         pattern_url = "\"\S+?\""
@@ -94,7 +102,9 @@ class DownloadSection:
             name_content = re.search(">[\s\S]+?<", name_content).group()[1:-1]
             html_parser = HTMLParser.HTMLParser()
             self.mClassList.append((url_content, html_parser.unescape(name_content.decode('utf-8'))))
+            self.mLogger.debug('class_lis:url_content:%s', url_content)
             del html_parser
+        self.mLogger.debug("obtain_class_list end")
 
     @staticmethod
     def get_down_url(url=""):
@@ -149,6 +159,7 @@ class DownloadSection:
         os.rename(class_name + ".tmp", class_name)
 
     def get_download_list(self, class_list):
+        self.mLogger.debug("get_download_list enter")
         result = []
         for _class in class_list:
             class_url = _class[0]
@@ -161,7 +172,9 @@ class DownloadSection:
             if video_type == "video/mp4":
                 class_name = self.mRootDir + DIR_SPLIT_C + class_name + ".mp4"
             class_name = check_file_dir(class_name)
+            self.mLogger.debug("get_download_list:%s", down_url)
             result.append((class_name, down_url))
+        self.mLogger.debug("get_download_list end")
         return result
 
     def set_progress_num(self, num=0):
@@ -169,24 +182,35 @@ class DownloadSection:
 
     # 启动多个进程开始下载
     def start_download_all(self):
+        self.mLogger.debug("start_download_all enter")
         self.obtain_content()
         self.obtain_class_list()
         self.mDownload_list = self.get_download_list(self.mClassList)
         if self.mProgressNum == 0:
             self.mProgressNum = multiprocessing.cpu_count()
             self.mLogger.info("cpu count is %d", self.mProgressNum)
-        pool = multiprocessing.Pool(self.mProgressNum)
+        self.pool = multiprocessing.Pool(self.mProgressNum)
         for _list in self.mDownload_list:
-            self.mResult.append(pool.apply_async(worker, (_list,)))
-        pool.close()
-        pool.join()
+            self.mLogger.info('new progress:%s', _list[0])
+            self.mResult.append(self.pool.apply_async(worker, (_list, self.mQueue,)))
+        self.pool.close()
+        self.mLogger.debug("start_download_all end")
+        # self.pool.join()
+
+    def recv_queue(self):
+        self.mLogger.debug('recv_queue enter')
+        while True:
+            if self.mQueue.qsize() != 0:
+                print self.mQueue.get_nowait()
 
 
-def worker(download_url=("", "")):
+def worker(download_url=("", ""), queue=None):
+    queue.put((download_url, 'start'))
     if os.path.exists(download_url[0]):
         return
-    urllib.urlretrieve(download_url[1], download_url[0] + ".tmp")
+    urllib.urlretrieve(download_url[1], download_url[0] + ".tmp", schedule)
     os.rename(download_url[0] + ".tmp", download_url[0])
+    queue.put((download_url, 'end'))
 
 
 def schedule(block, block_size, file_size):
@@ -194,7 +218,5 @@ def schedule(block, block_size, file_size):
         per = int(100.0 * block * block_size / file_size)
         if per > 100:
             per = 100
-            os.write(1, '\r')
-        os.write(1, 'Downloading ->' + str(per) + '%')
-        os.write(1, '\b' * 18)
-        sys.stdout.flush()
+
+
