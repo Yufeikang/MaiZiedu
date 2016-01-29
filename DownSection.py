@@ -22,7 +22,7 @@ def check_file_dir(file_dir=""):
     return file_dir
 
 
-class DownCourse:
+class DownloadSection:
     def __init__(self, root_dir="", url=""):
         if root_dir[-1] == "\\" or root_dir[-1] == "/":
             self.mRootDir = root_dir
@@ -194,5 +194,5 @@ def schedule(block, block_size, file_size):
 
 
 if __name__ == '__main__':
-    class_down = DownCourse("D:\\tmp\\", 'http://www.maiziedu.com/course/android/504-7107/')
+    class_down = DownloadSection("D:\\tmp\\", 'http://www.maiziedu.com/course/android/504-7107/')
     class_down.fast_start(schedule)
