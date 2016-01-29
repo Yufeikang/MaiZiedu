@@ -17,8 +17,16 @@ import os
 import sys
 import multiprocessing
 import logging
+import platform
 
 ROOT_URL = "http://www.maiziedu.com"
+DIR_SPLIT_C = ''
+
+platform_sys = platform.system()
+if platform_sys.lower() == 'win32':
+    DIR_SPLIT_C = '\\'
+else:
+    DIR_SPLIT_C = '/'
 
 
 def check_file_dir(file_dir=""):
@@ -34,7 +42,7 @@ class DownloadSection:
         if root_dir[-1] == "\\" or root_dir[-1] == "/":
             self.mRootDir = root_dir
         else:
-            self.mRootDir = root_dir + "\\"
+            self.mRootDir = root_dir + DIR_SPLIT_C
         self.mCourseUrl = url
         self.mClassList = []
         self.mContent = ""
@@ -113,7 +121,7 @@ class DownloadSection:
                 class_url = ROOT_URL + class_url
             (down_url, video_type) = self.get_down_url(class_url)
             if video_type == "video/mp4":
-                class_name = self.mRootDir + self.mCourseName + "\\" + class_name + ".mp4"
+                class_name = self.mRootDir + class_name + ".mp4"
             class_name = check_file_dir(class_name)
             print "Url:" + down_url
             print "Name:" + class_name
@@ -131,7 +139,7 @@ class DownloadSection:
             class_url = ROOT_URL + class_url
         (down_url, video_type) = self.get_down_url(class_url)
         if video_type == "video/mp4":
-            class_name = self.mRootDir + self.mCourseName.decode('utf-8') + "\\" + class_name + ".mp4"
+            class_name = self.mRootDir + class_name + ".mp4"
         class_name = check_file_dir(class_name)
         # print "Url:" + down_url
         # print "Name:" + class_name
@@ -151,7 +159,7 @@ class DownloadSection:
                 class_url = ROOT_URL + class_url
             (down_url, video_type) = self.get_down_url(class_url)
             if video_type == "video/mp4":
-                class_name = self.mRootDir + "\\" + class_name + ".mp4"
+                class_name = self.mRootDir + DIR_SPLIT_C + class_name + ".mp4"
             class_name = check_file_dir(class_name)
             result.append((class_name, down_url))
         return result
