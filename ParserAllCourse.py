@@ -48,6 +48,7 @@ class AllCourseParser(HTMLParser):
 
 
 # 获取麦子学院课程列表
+# return [(url, title) ,(url, title) ...]
 def get_all_course_list():
     request = urllib2.Request(MaiZi_URL)
     response = urllib2.urlopen(request)

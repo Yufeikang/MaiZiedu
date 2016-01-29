@@ -151,7 +151,7 @@ class DownloadSection:
                 class_url = ROOT_URL + class_url
             (down_url, video_type) = self.get_down_url(class_url)
             if video_type == "video/mp4":
-                class_name = self.mRootDir + self.mCourseName.decode('utf-8') + "\\" + class_name + ".mp4"
+                class_name = self.mRootDir + "\\" + class_name + ".mp4"
             class_name = check_file_dir(class_name)
             result.append((class_name, down_url))
         return result
@@ -162,12 +162,11 @@ class DownloadSection:
     # 启动多个进程开始下载
     def start_download_all(self):
         self.obtain_content()
-        self.obtain_course_name()
         self.obtain_class_list()
         self.mDownload_list = self.get_download_list(self.mClassList)
         if self.mProgressNum == 0:
-            self.mProgressNum = multiprocessing.cpu_count() * 2
-            self.mLogger.info("cpu count is %d",self.mProgressNum)
+            self.mProgressNum = multiprocessing.cpu_count()
+            self.mLogger.info("cpu count is %d", self.mProgressNum)
         pool = multiprocessing.Pool(self.mProgressNum)
         for _list in self.mDownload_list:
             self.mResult.append(pool.apply_async(worker, (_list,)))
@@ -193,6 +192,3 @@ def schedule(block, block_size, file_size):
         os.write(1, 'Downloading ->' + str(per) + '%')
         os.write(1, '\b' * 18)
         sys.stdout.flush()
-
-
-
