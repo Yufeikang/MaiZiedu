@@ -175,8 +175,8 @@ class DownloadSection:
 
 
 def worker(download_url=("", "")):
-    # print download_url[0]
-    # print download_url[1]
+    print download_url[0]
+    print download_url[1]
     if os.path.exists(download_url[0]):
         return
     urllib.urlretrieve(download_url[1], download_url[0] + ".tmp")
