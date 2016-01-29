@@ -3,7 +3,7 @@
     Created by kang on 11/1/2015.
 """
 
-from DownSection import DownloadSection
+from DownloadSection import DownloadSection
 import multiprocessing
 
 if __name__ == '__main__':

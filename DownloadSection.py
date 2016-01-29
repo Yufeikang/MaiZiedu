@@ -1,6 +1,13 @@
 # coding=utf-8
 """
-    Created by kang on 11 / 1 / 2015.
+@version: 1.0
+@author: kang
+@contact: kyf0722@gmail.com
+@site: www.kangyufei.net
+@software: PyCharm
+@file: DownloadSection.py
+@time: 1/29/2016 16:54
+@description: 下载整个章节
 """
 import urllib
 import urllib2
@@ -149,15 +156,10 @@ class DownloadSection:
             result.append((class_name, down_url))
         return result
 
-    def fast_start(self, call_back=None):
-        self.obtain_content()
-        self.obtain_course_name()
-        self.obtain_class_list()
-        self.down_class(call_back)
-
     def set_progress_num(self, num=0):
         self.mProgressNum = num
 
+    # 启动多个进程开始下载
     def start_download_all(self):
         self.obtain_content()
         self.obtain_course_name()
@@ -193,6 +195,4 @@ def schedule(block, block_size, file_size):
         sys.stdout.flush()
 
 
-if __name__ == '__main__':
-    class_down = DownloadSection("D:\\tmp\\", 'http://www.maiziedu.com/course/android/504-7107/')
-    class_down.fast_start(schedule)
+
