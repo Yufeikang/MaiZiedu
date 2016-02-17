@@ -16,34 +16,31 @@ import HTMLParser
 import os
 import multiprocessing
 import logging
-import platform
 
 ROOT_URL = "http://www.maiziedu.com"
-DIR_SPLIT_C = ''
-platform_sys = platform.system()
-if platform_sys.lower() == 'win32':
-    DIR_SPLIT_C = '\\'
-else:
-    DIR_SPLIT_C = '/'
 
 
-def check_file_dir(file_dir=""):
-    file_dir = "".join(file_dir.split())
-    (dir, file) = os.path.split(file_dir)
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-    return file_dir
+def check_file_name(filename=''):
+    filename = "".join(filename.split())
+    return re.sub('[\ /:*?"<>|]', '_', filename)
+
+
+def check_file_dir(file_path=""):
+    (filedir, filename) = os.path.split(file_path)
+    filename = check_file_name(filename)
+    file_path = os.path.join(filedir, filename)
+    if not os.path.exists(filedir):
+        os.makedirs(filedir)
+    return file_path
 
 
 class DownloadSection:
     def __init__(self, root_dir="", url=""):
-        if root_dir[-1] == "\\" or root_dir[-1] == "/":
-            self.mRootDir = root_dir
-        else:
-            self.mRootDir = root_dir + DIR_SPLIT_C
+        self.mRootDir = root_dir
         self.mCourseUrl = url
         self.mClassList = []
         self.mContent = ""
+        self.mDownCnt = 0
         self.mCourseName = ""
         self.mDownload_list = []  # 包含保存路径和下载URl的元组
         self.mResult = []
@@ -52,7 +49,9 @@ class DownloadSection:
         self.queue = None
         self.mLogger = logging.getLogger(self.mRootDir)
         self.mLogger.setLevel(logging.DEBUG)
-        self.mFileHandle = logging.FileHandler(self.mRootDir + 'log.txt')
+        logfilepath = os.path.join(self.mRootDir, 'log.txt')
+        logfilepath = check_file_dir(logfilepath)
+        self.mFileHandle = logging.FileHandler(logfilepath)
         formatter = logging.Formatter("%(asctime)s:[line:%(lineno)d] %(levelname)s %(message)s")
         self.mFileHandle.setFormatter(formatter)
         self.mConsoleHandle = logging.StreamHandler()
@@ -106,19 +105,24 @@ class DownloadSection:
             del html_parser
         self.mLogger.debug("obtain_class_list end")
 
-    @staticmethod
-    def get_down_url(url=""):
+    def get_down_url(self, url=""):
         pattern_video = "<video[\s\S]+?</video>"
-        pattern_url = "src=\S+?\""
+        pattern_url = "src=[\S\s]+?\""
         pattern_type = "type=.*?/>"
         try:
             req = urllib2.Request(url)
             content = urllib2.urlopen(req).read()
         except Exception, e:
+            self.mLogger.error("get_down_url:%s ", str(e))
             print e
-        video_content = re.search(pattern_video, content).group()
-        down_url = re.search(pattern_url, video_content).group()[5:-1]
-        video_type = re.search(pattern_type, video_content).group()[6:-3]
+        try:
+            video_content = re.search(pattern_video, content).group()
+            down_url = re.search(pattern_url, video_content).group()[5:-1]
+            video_type = re.search(pattern_type, video_content).group()[6:-3]
+        except Exception, e:
+            self.mLogger.error("get_down_url:url=%s \n ERROR: %s \n CONTENT: %s", url, str(e), video_content)
+            down_url = ''
+            video_type = ''
         return down_url, video_type
 
     def down_all_class(self, call_back=None):
@@ -130,8 +134,11 @@ class DownloadSection:
             else:
                 class_url = ROOT_URL + class_url
             (down_url, video_type) = self.get_down_url(class_url)
+            if down_url == '':
+                continue
             if video_type == "video/mp4":
-                class_name = self.mRootDir + class_name + ".mp4"
+                class_name = check_file_name(class_name)
+                class_name = os.path.join(self.mRootDir, class_name + ".mp4")
             class_name = check_file_dir(class_name)
             print "Url:" + down_url
             print "Name:" + class_name
@@ -149,7 +156,8 @@ class DownloadSection:
             class_url = ROOT_URL + class_url
         (down_url, video_type) = self.get_down_url(class_url)
         if video_type == "video/mp4":
-            class_name = self.mRootDir + class_name + ".mp4"
+            class_name = check_file_name(class_name)
+            class_name = os.path.join(self.mRootDir, class_name + ".mp4")
         class_name = check_file_dir(class_name)
         # print "Url:" + down_url
         # print "Name:" + class_name
@@ -170,7 +178,10 @@ class DownloadSection:
                 class_url = ROOT_URL + class_url
             (down_url, video_type) = self.get_down_url(class_url)
             if video_type == "video/mp4":
-                class_name = self.mRootDir + DIR_SPLIT_C + class_name + ".mp4"
+                class_name = check_file_name(class_name)
+                class_name = os.path.join(self.mRootDir, class_name + ".mp4")
+            else:
+                continue
             class_name = check_file_dir(class_name)
             self.mLogger.debug("get_download_list:%s", down_url)
             result.append((class_name, down_url))
@@ -201,16 +212,28 @@ class DownloadSection:
         self.mLogger.debug('recv_queue enter')
         while True:
             if self.mQueue.qsize() != 0:
-                print self.mQueue.get_nowait()
+                url, sta = self.mQueue.get_nowait()
+                print url + " : " + sta
+                if sta == 'end':
+                    self.mDownCnt += 1
+                elif sta == 'error':
+                    self.mDownCnt += 1
+                    self.mLogger.error(url + ':ERROR')
+                if self.mDownCnt == len(self.mDownload_list):
+                    return
 
 
 def worker(download_url=("", ""), queue=None):
-    queue.put((download_url, 'start'))
-    if os.path.exists(download_url[0]):
-        return
-    urllib.urlretrieve(download_url[1], download_url[0] + ".tmp", schedule)
-    os.rename(download_url[0] + ".tmp", download_url[0])
-    queue.put((download_url, 'end'))
+    try:
+        queue.put((download_url[0], 'start'))
+        if os.path.exists(download_url[0]):
+            queue.put((download_url[0], 'end'))
+            return
+        urllib.urlretrieve(download_url[1], download_url[0] + ".tmp", schedule)
+        os.rename(download_url[0] + ".tmp", download_url[0])
+        queue.put((download_url[0], 'end'))
+    except:
+        queue.put((download_url[0], 'error'))
 
 
 def schedule(block, block_size, file_size):
@@ -218,5 +241,3 @@ def schedule(block, block_size, file_size):
         per = int(100.0 * block * block_size / file_size)
         if per > 100:
             per = 100
-
-
